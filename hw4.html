@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+#info {
+    position: absolute;
+    top: 0px;
+    width: 100%;
+    padding: 10px;
+    text-align: center;
+    color: #ff0000
+}
+a {
+    color: #ffff00
+}
+}
+
+
+	strong {color: red}
+</style>
+</head>
+
+<body>
+
+
+
+<div id="container"></div>
+<div id="info">demo page
+    <br/> <a href="javascript:Toggle();">上下(加速前進,減速)左右(左右轉)鍵  </a>
+
+</div>
+
+
+
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script src="js/KeyboardState.js"></script>
+<script src="js/MTLLoader.js"></script>
+<script src="js/OBJMTLLoader.js"></script>
+
+<script>
+// JUST A MATTER OF MrDoob's STYLE (see ppt)
+///////////////////////////////////////////////////////
+// I. GLOBAL VARS
+var camera, scene, renderer, geometry, material, light, clock;
+var angle = 0, speed = 5;
+var controls, keyboard = new KeyboardState();
+var  car, tire,tire2,angleL = 0, angleR = 0;
+var speed = 5, rotspeed = 0;
+
+var speedR = 10, speedL = 10;
+var pos = new THREE.Vector3(0,0,0);
+var vel = 10;
+var vel2 = 10;
+var xangle = 0;
+var zangle = 0;
+init();
+animate();
+function floorfun(){
+
+	////////floor
+	var floorTexture = new THREE.ImageUtils.loadTexture( 'images/floor-wood.jpg' );
+	floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+	floorTexture.repeat.set( 4, 4 );
+	var floorMaterial = new THREE.MeshBasicMaterial( { map: floorTexture, side: THREE.DoubleSide } );
+	var floorGeometry = new THREE.PlaneGeometry(150, 150);//, 10, 10);  // not clear what segment does
+	var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+	floor.position.y = -0.5;
+	floor.rotation.x = Math.PI / 2;
+	scene.add(floor);
+}
+function setting(){
+	scene = new THREE.Scene();
+	clock = new THREE.Clock();
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.z = 500;
+	renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000);
+	
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    document.body.appendChild(renderer.domElement);
+    scene.add(camera);
+}
+function tiresetting(){
+	///// tire texture  
+    THREE.ImageUtils.crossOrigin = '';
+    var tiresidemap = THREE.ImageUtils.loadTexture('images/tire-side.png');
+    var tirewheelmap = THREE.ImageUtils.loadTexture('images/tire-wheel.jpg');
+
+    tire = new THREE.Object3D();
+	////////// 鋼圈
+    tiregeometry = new THREE.CircleGeometry(20, 20);
+    tirematerial = new THREE.MeshBasicMaterial({
+        map: tiresidemap,
+        transparent: true,  // for cut-out texture
+        side: THREE.DoubleSide
+    });
+	var tireside = new THREE.Mesh(tiregeometry, tirematerial);
+	
+	
+	
+	//輪紋
+	tirewheelmap.wrapS = tirewheelmap.wrapT = THREE.RepeatWrapping; 
+	tirewheelmap.repeat.set( 10, 1 );
+    var tirewheel = new THREE.Mesh(new THREE.CylinderGeometry(20, 20, 10, 30, 1, true), // only side
+    new THREE.MeshBasicMaterial({
+        map: tirewheelmap,
+        side: THREE.DoubleSide
+    }));
+ 
+	
+    tirewheel.rotation.x = Math.PI / 2;
+    tireside.position.set(0, 0, 5);
+    tireside2 = tireside.clone();
+    tireside2.position.set(0, 0, -5);
+    tireside2.rotation.y = Math.PI;
+    tire.add (tireside);
+	tire.add(tireside2);
+    
+	tire.add(tirewheel);
+	
+	tire2=tire.clone();
+	tire2.position.set(0, 20, 40);//左輪
+	tire.position.set (0,20,0);	//右輪
+}
+function carbodysetting(){
+	var cube1Geometry = new THREE.BoxGeometry (20,10,29); //踏墊
+	var cube1Material = new THREE.MeshLambertMaterial ({color: 0xEE3232});
+	cube1 = new THREE.Mesh (cube1Geometry, cube1Material);
+	cube1.position.set (0, 25, 20);
+	
+	var cube2Geometry = new THREE.CylinderGeometry(3,3,8,32); //
+	var cube2Material = new THREE.MeshLambertMaterial ({color: 0x110076});
+	cube2 = new THREE.Mesh (cube2Geometry, cube2Material);
+	cube2.position.set (10, 25, 20);
+	
+	
+	var cube3Geometry = new THREE.CylinderGeometry(2,2,30,32);            //把手
+	var cube3Material = new THREE.MeshLambertMaterial ({color: 0x110076});
+	cube3 = new THREE.Mesh (cube3Geometry, cube3Material);
+	cube3.position.set (-10, 40, 20);
+	
+	
+
+
+
+	
+}
+function addModelToScene(geometry, materials) {
+	var material = new THREE.MeshFaceMaterial(materials);
+	jsonModel = new THREE.Mesh(geometry, material);
+	jsonModel.scale.set(4, 4, 4);
+	jsonModel.rotation.y = Math.PI; // default: back face +z
+	pilot.add(jsonModel);
+	pilot.position.set (5, 29, 20);
+	pilot.rotation.y = Math.PI / 2;
+}
+function init() {
+
+	setting();// camera ,setting 
+	floorfun();//// 地板
+	tiresetting();
+	
+	pilot = new THREE.Object3D();
+	
+	
+	
+	carbodysetting();
+	
+	car = new THREE.Object3D();
+	car.add(tire);
+	car.add(tire2);
+	car.add (cube1);
+	car.add (cube2);
+	car.add (cube3);
+	car.add(pilot);
+    scene.add(car);
+    var jsonLoader = new THREE.JSONLoader();
+	jsonLoader.load("http://jyunming-chen.github.io/tutsplus/models/android.json", addModelToScene);
+    
+	var pointLight = new THREE.PointLight (0xffffff);
+	pointLight.position.set (0,300,200);
+	scene.add (pointLight);
+
+
+
+
+}
+
+function animate() {
+    var dt = clock.getDelta();
+	var dir = new THREE.Vector3(0,0,1);
+	angle += rotspeed*dt;
+	dir.multiplyScalar (dt*speed).applyAxisAngle (new THREE.Vector3(0,1,0), angle);
+
+	pos.add (dir); 	
+	
+	if (car != undefined) { 
+		car.scale.set (0.2,0.2,0.2);
+		car.position.set (pos.x, pos.y, pos.z);
+		car.rotation.y = angle+Math.PI/2;
+		tire.rotation.z = angleL;//右輪轉
+		tire2.rotation.z = angleR;//左輪轉
+	}
+    requestAnimationFrame(animate);
+    update();
+	render();
+
+    
+    //if (tire.position.z > 50 || tire.position.z < -50) sign *= -1;
+   // tire.position.z += sign*vel*dt;
+
+
+
+}
+function myclamp(x,lo,hi)
+{
+	if (x < lo){
+		return lo;
+	} 
+	if (x > hi){	
+		return hi;
+	} 
+	return x;
+}
+
+function update()
+{
+	controls.update();
+	keyboard.update();         
+if ( keyboard.pressed("left") )
+	{ 
+		xangle += 0.005;
+		angleL -= 0.3;
+		angleR -= 0.05;
+		speedL += 0.5; 
+		
+	}
+	if ( keyboard.pressed("right") )
+	{
+		xangle -= 0.005;
+		angleL -= 0.05;
+		angleR -= 0.3;
+		speedR += 0.5; 
+		
+	}
+	if ( keyboard.pressed("up") )  
+	{	
+		//zangle -= 0.05;
+		angleL -= 0.05;
+		angleR -= 0.05;
+		speedL += 0.5;
+		speedR += 0.5;
+	}
+	if ( keyboard.pressed("down") ) 
+	{
+		//zangle += 0.05;
+		angleL += 0.05;
+		angleR += 0.05;
+		speedL -= 0.5;
+		speedR -= 0.5;
+	} 
+	xangle = myclamp(xangle, -0.2, 0.1);
+	zangle = myclamp(zangle, -0.2, 0.1);
+	
+	pilot.rotation.x = xangle;
+	//pilot.rotation.z = zangle;
+	// viscous drag
+	speedL *= 0.95;
+	speedR *= 0.95;
+
+	console.log ("L: " + speedL + "; R: " + speedR);
+	
+	// no backtrack yet
+	speedL = myclamp (speedL, -10, 100);
+	speedR = myclamp (speedR, -10, 100);
+	
+	speed = (speedL + speedR)/2;
+	rotspeed = (speedL - speedR)/10;
+}
+function render() {
+    renderer.render(scene, camera);
+}
+</script>
+</body>
+
+</html>
